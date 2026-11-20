@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prayer Time for Kraken · Setup</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0a1022; --card: #131b36; --line: #26315a; --text: #f4efe2; --soft: #a9b0c8; --accent: #f2c66d; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 Outfit, "Segoe UI", sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; padding-block: 40px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+          padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: 1fr 360px; gap: 36px; }
+  h1 { font-size: 34px; margin: 0 0 6px; font-weight: 700; text-wrap: balance; }
+  h1 span { color: var(--accent); }
+  p.lead { color: var(--soft); margin: 0 0 26px; }
+  form { display: grid; gap: 16px; }
+  label { display: grid; gap: 6px; font-size: 14px; color: var(--soft); }
+  select, input { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; font: inherit; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  button { background: var(--accent); color: #1a1405; border: 0; border-radius: 10px; padding: 12px 16px; font: 600 15px Outfit, sans-serif; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .link { display: grid; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .link code { word-break: break-all; color: var(--accent); font-size: 13px; }
+  .preview { position: sticky; top: 24px; align-self: start; }
+  .preview iframe { width: 360px; height: 360px; border: 0; border-radius: 50%; display: block; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+  .steps { color: var(--soft); font-size: 14px; padding-left: 18px; }
+  @media (max-width: 760px) { .wrap { grid-template-columns: 1fr; } .preview { position: static; justify-self: center; } .preview iframe { width: 300px; height: 300px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <main>
+    <h1>Prayer Time <span>for Kraken</span></h1>
+    <p class="lead">Set it up once: choose your city and style, copy your link, paste it into NZXT CAM.</p>
+    <form id="f">
+      <label>City
+        <select id="city"></select>
+      </label>
+      <div class="row">
+        <label>Latitude <input id="lat" inputmode="decimal"></label>
+        <label>Longitude <input id="lon" inputmode="decimal"></label>
+      </div>
+      <button type="button" class="ghost" id="locate">Use my location</button>
+      <div class="row">
+        <label>Calculation method
+          <select id="method">
+            <option value="Dubai">UAE (Dubai)</option><option value="UmmAlQura">Umm al-Qura (Saudi Arabia)</option>
+            <option value="MuslimWorldLeague">Muslim World League</option><option value="Egyptian">Egyptian</option>
+            <option value="Karachi">Karachi (Pakistan, India)</option><option value="Kuwait">Kuwait</option>
+            <option value="Qatar">Qatar</option><option value="Singapore">Singapore, Malaysia</option>
+            <option value="Turkey">Turkey (Diyanet)</option><option value="NorthAmerica">North America (ISNA)</option>
+            <option value="MoonsightingCommittee">Moonsighting Committee</option><option value="Tehran">Tehran</option>
+          </select>
+        </label>
+        <label>Asr
+          <select id="asr"><option value="shafi">Standard (Shafi, Maliki, Hanbali)</option><option value="hanafi">Hanafi</option></select>
+        </label>
+      </div>
+      <div class="row">
+        <label>Language <select id="lang"><option value="en">English</option><option value="ar">العربية</option></select></label>
+        <label>Style <select id="theme"><option value="night">Night &amp; gold</option><option value="rose">Rose</option><option value="mint">Mint</option></select></label>
+      </div>
+      <div class="row">
+        <label>Clock <select id="h24"><option value="0">12-hour</option><option value="1">24-hour</option></select></label>
+        <label>Hijri date adjust <select id="hijri"><option value="-1">−1 day</option><option value="0" selected>None</option><option value="1">+1 day</option></select></label>
+      </div>
+      <div class="link">
+        <strong>Your link</strong>
+        <code id="url"></code>
+        <button type="button" id="copy">Copy link</button>
+      </div>
+      <ol class="steps">
+        <li>Open <b>NZXT CAM → Lighting</b> and pick your Kraken's <b>LCD Display</b>.</li>
+        <li>Choose <b>Web Integration</b>, then <b>Custom</b> (or "Add new"), and paste your link.</li>
+        <li>Save. Temperatures appear as soon as CAM sends them.</li>
+      </ol>
+    </form>
+  </main>
+  <aside class="preview"><iframe id="frame" title="Preview of your Kraken screen"></iframe></aside>
+</div>
+<script>
+  var CITIES = [
+    ['Abu Dhabi', 24.4539, 54.3773, 'Dubai'], ['Dubai', 25.2048, 55.2708, 'Dubai'], ['Sharjah', 25.3463, 55.4209, 'Dubai'],
+    ['Ras Al Khaimah', 25.7895, 55.9432, 'Dubai'], ['Al Ain', 24.2075, 55.7447, 'Dubai'], ['Makkah', 21.3891, 39.8579, 'UmmAlQura'],
+    ['Madinah', 24.5247, 39.5692, 'UmmAlQura'], ['Riyadh', 24.7136, 46.6753, 'UmmAlQura'], ['Jeddah', 21.4858, 39.1925, 'UmmAlQura'],
+    ['Doha', 25.2854, 51.531, 'Qatar'], ['Kuwait City', 29.3759, 47.9774, 'Kuwait'], ['Manama', 26.2285, 50.586, 'MuslimWorldLeague'],
+    ['Muscat', 23.588, 58.3829, 'MuslimWorldLeague'], ['Cairo', 30.0444, 31.2357, 'Egyptian'], ['Amman', 31.9454, 35.9284, 'MuslimWorldLeague'],
+    ['Damascus', 33.5138, 36.2765, 'MuslimWorldLeague'], ['Istanbul', 41.0082, 28.9784, 'Turkey'], ['Karachi', 24.8607, 67.0011, 'Karachi'],
+    ['Lahore', 31.5204, 74.3587, 'Karachi'], ['Kuala Lumpur', 3.139, 101.6869, 'Singapore'], ['Jakarta', -6.2088, 106.8456, 'Singapore'],
+    ['London', 51.5072, -0.1276, 'MoonsightingCommittee'], ['Paris', 48.8566, 2.3522, 'MuslimWorldLeague'],
+    ['New York', 40.7128, -74.006, 'NorthAmerica'], ['Toronto', 43.6532, -79.3832, 'NorthAmerica']];
+  var $ = function (id) { return document.getElementById(id); };
+  var base = new URL('index.html', location.href).href;
+  CITIES.forEach(function (c, i) { var o = new Option(c[0], i); $('city').add(o); });
+  $('city').add(new Option('Other (enter coordinates)', 'custom'));
+  $('city').value = '3';
+  function pickCity() {
+    var c = CITIES[$('city').value];
+    if (!c) return;
+    $('lat').value = c[1]; $('lon').value = c[2]; $('method').value = c[3];
+  }
+  function build() {
+    var p = new URLSearchParams({lat: $('lat').value, lon: $('lon').value, method: $('method').value, asr: $('asr').value,
+                                 lang: $('lang').value, theme: $('theme').value, h24: $('h24').value, hijri: $('hijri').value});
+    var url = base + '?' + p.toString();
+    $('url').textContent = url;
+    if ($('frame').dataset.src !== url) { $('frame').dataset.src = url; $('frame').src = url; }
+  }
+  $('city').addEventListener('change', function () { pickCity(); build(); });
+  $('f').addEventListener('input', build);
+  $('f').addEventListener('change', build);
+  $('locate').addEventListener('click', function () {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      $('lat').value = pos.coords.latitude.toFixed(4); $('lon').value = pos.coords.longitude.toFixed(4);
+      $('city').value = 'custom'; build();
+    });
+  });
+  $('copy').addEventListener('click', function () {
+    var text = $('url').textContent;
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () {
+      $('copy').textContent = 'Copied!'; setTimeout(function () { $('copy').textContent = 'Copy link'; }, 1500);
+    }, function () { var r = document.createRange(); r.selectNodeContents($('url')); getSelection().removeAllRanges(); getSelection().addRange(r); });
+  });
+  pickCity(); build();
+</script>
+</body>
+</html>
