@@ -16,5 +16,8 @@ Works with Kraken Elite and Kraken (Z-series) coolers that have a screen.
 
 If it stops drawing, set **CAM → Settings → General → Graphics API** to DirectX 12.
 
+## Support
+It's free. If it helps you keep your prayers, you can buy me a coffee: [☕ ko-fi.com/tuofie](https://ko-fi.com/tuofie)
+
 ## Credits
 Prayer times are calculated with [Adhan](https://github.com/batoulapps/adhan-js) (MIT licence, see `LICENSE-ADHAN.txt`), loaded from jsDelivr.
