@@ -12,7 +12,7 @@ It comes in **English and Arabic**, in three styles (Night & gold, Rose, Mint), 
 2. Pick your city, method, language and style, then press **Copy link**.
 3. In **NZXT CAM**, go to **Lighting → LCD Display → Web Integration → Custom Web Integration**, paste your link and save.
 
-Works with Kraken Elite and Kraken (Z-series) coolers that have a screen.
+Tested on the Kraken Elite (640×640 round screen). The layout scales to other Kraken screens, but those are not tested yet.
 
 If it stops drawing, set **CAM → Settings → General → Graphics API** to DirectX 12.
 
