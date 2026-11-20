@@ -1,0 +1,163 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=640, height=640">
+<title>Prayer Time · Kraken LCD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=Noto+Kufi+Arabic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* Themes: night (navy + gold), rose (plum + pink), mint (deep teal + mint). */
+  :root { --bg1: #12204a; --bg2: #040914; --accent: #f2c66d; --text: #f4efe2; --soft: rgba(244,239,226,.62); --track: rgba(255,255,255,.08); }
+  body.rose { --bg1: #3b1430; --bg2: #10040c; --accent: #ff8fb1; --text: #fff0f5; --soft: rgba(255,240,245,.62); }
+  body.mint { --bg1: #0b3a33; --bg2: #031210; --accent: #5fe0c0; --text: #eafff9; --soft: rgba(234,255,249,.6); }
+  html, body { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+  body { font-family: Outfit, "Segoe UI", sans-serif; color: var(--text); }
+  body.ar { font-family: "Noto Kufi Arabic", Outfit, "Segoe UI", sans-serif; }
+  #stage { position: absolute; left: 50%; top: 50%; width: 640px; height: 640px; transform: translate(-50%, -50%) scale(var(--fit, 1));
+           border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 38%, var(--bg1), var(--bg2) 72%); }
+  svg.ring { position: absolute; inset: 0; }
+  .line { position: absolute; left: 0; right: 0; text-align: center; white-space: nowrap; }
+  #hijri { top: 92px; font-size: 21px; color: var(--soft); letter-spacing: .02em; }
+  #clock { top: 124px; font-size: 26px; font-weight: 500; }
+  #label { top: 196px; font-size: 17px; letter-spacing: .32em; color: var(--accent); font-weight: 500; }
+  body.ar #label { letter-spacing: 0; font-size: 20px; }
+  #name { top: 222px; font-size: 92px; font-weight: 700; line-height: 1; }
+  body.ar #name { font-size: 78px; top: 218px; }
+  #count { top: 338px; font-size: 30px; font-weight: 500; }
+  #at { top: 378px; font-size: 19px; color: var(--soft); }
+  #temps { top: 424px; display: flex; justify-content: center; gap: 30px; font-size: 18px; color: var(--soft); }
+  #temps b { display: block; font-size: 30px; color: var(--text); font-weight: 500; }
+  #list { top: 502px; display: flex; justify-content: center; gap: 14px; font-size: 14px; color: var(--soft); }
+  #list div { width: 74px; }
+  #list b { display: block; font-size: 17px; color: var(--text); font-weight: 500; }
+  #list .next, #list .next b { color: var(--accent); }
+  body.ar .line { direction: rtl; }
+  body.ar #temps { top: 418px; font-size: 16px; }
+  body.ar #temps b { font-size: 27px; }
+  body.ar #list { top: 508px; font-size: 13px; }
+  body.ar #list b { font-size: 16px; }
+  #stage.soon #name { animation: glow 2s ease-in-out infinite; }
+  @keyframes glow { 50% { text-shadow: 0 0 22px var(--accent); } }
+</style>
+</head>
+<body>
+<div id="stage">
+  <svg class="ring" viewBox="0 0 640 640">
+    <circle cx="320" cy="320" r="304" fill="none" stroke="var(--track)" stroke-width="10"/>
+    <circle id="arc" cx="320" cy="320" r="304" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round"
+            transform="rotate(-90 320 320)" stroke-dasharray="1910" stroke-dashoffset="1910"/>
+    <circle id="dot" r="9" fill="var(--accent)"/>
+  </svg>
+  <div class="line" id="hijri"></div>
+  <div class="line" id="clock"></div>
+  <div class="line" id="label"></div>
+  <div class="line" id="name"></div>
+  <div class="line" id="count"></div>
+  <div class="line" id="at"></div>
+  <div class="line" id="temps"></div>
+  <div class="line" id="list"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/adhan@4.4.3/lib/bundles/adhan.umd.min.js"></script>
+<script>
+(function () {
+  // Settings come from the link: ?lat=25.79&lon=55.94&method=Dubai&asr=shafi&lang=en&theme=night&h24=0&hijri=0
+  var q = new URLSearchParams(location.search);
+  var cfg = {
+    lat: parseFloat(q.get('lat') || '25.7895'), lon: parseFloat(q.get('lon') || '55.9432'),
+    method: q.get('method') || 'Dubai', asr: q.get('asr') || 'shafi', lang: q.get('lang') === 'ar' ? 'ar' : 'en',
+    theme: ['night', 'rose', 'mint'].indexOf(q.get('theme')) >= 0 ? q.get('theme') : 'night',
+    h24: q.get('h24') === '1', hijri: parseInt(q.get('hijri') || '0', 10) || 0, temps: q.get('temps') !== '0'
+  };
+  document.body.className = cfg.theme + (cfg.lang === 'ar' ? ' ar' : '');
+  var T = cfg.lang === 'ar'
+    ? {next: 'الصلاة القادمة', names: {fajr: 'الفجر', dhuhr: 'الظهر', asr: 'العصر', maghrib: 'المغرب', isha: 'العشاء', jumuah: 'الجمعة'},
+       now: 'حان الآن', inp: 'بعد', hr: 'س', min: 'د', at: 'الساعة', cpu: 'المعالج', gpu: 'الرسوميات', liquid: 'السائل'}
+    : {next: 'NEXT PRAYER', names: {fajr: 'Fajr', dhuhr: 'Dhuhr', asr: 'Asr', maghrib: 'Maghrib', isha: 'Isha', jumuah: "Jumu'ah"},
+       now: "It's time", inp: 'in', hr: 'hr', min: 'min', at: 'at', cpu: 'CPU', gpu: 'GPU', liquid: 'Liquid'};
+  var IDS = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+  var $ = function (id) { return document.getElementById(id); };
+
+  // Fit the 640 px design into whatever size the screen gives us.
+  function fit() { document.documentElement.style.setProperty('--fit', Math.min(innerWidth, innerHeight) / 640); }
+  addEventListener('resize', fit); fit();
+
+  function params() {
+    var p = (adhan.CalculationMethod[cfg.method] || adhan.CalculationMethod.MuslimWorldLeague)();
+    p.madhab = cfg.asr === 'hanafi' ? adhan.Madhab.Hanafi : adhan.Madhab.Shafi;
+    return p;
+  }
+  var cache = {};
+  function day(date) {
+    var key = date.toDateString();
+    if (!cache[key]) {
+      var t = new adhan.PrayerTimes(new adhan.Coordinates(cfg.lat, cfg.lon), date, params());
+      cache[key] = IDS.map(function (id) { return {id: id, time: t[id].getTime()}; });
+    }
+    return cache[key];
+  }
+  function clock(ms) {
+    var d = new Date(ms), h = d.getHours(), m = ('0' + d.getMinutes()).slice(-2);
+    if (cfg.h24) return ('0' + h).slice(-2) + ':' + m;
+    return (h % 12 || 12) + ':' + m + ' ' + (cfg.lang === 'ar' ? (h < 12 ? 'ص' : 'م') : (h < 12 ? 'AM' : 'PM'));
+  }
+  function label(id, ms) { return id === 'dhuhr' && new Date(ms).getDay() === 5 ? T.names.jumuah : T.names[id]; }
+  function hijriText(now) {
+    try {
+      var d = new Date(now + cfg.hijri * 86400000);
+      return new Intl.DateTimeFormat((cfg.lang === 'ar' ? 'ar' : 'en') + '-u-ca-islamic-umalqura-nu-latn',
+                                     {day: 'numeric', month: 'long', year: 'numeric'}).format(d).replace(/ AH$/, '');
+    } catch (e) { return ''; }
+  }
+
+  function draw() {
+    var now = Date.now(), today = new Date(), list = day(today), i, next = null, prev = null;
+    for (i = 0; i < list.length; i++) if (list[i].time > now) { next = list[i]; prev = list[i - 1] || null; break; }
+    if (!next) {
+      var tomorrow = new Date(today.getTime() + 86400000);
+      next = day(tomorrow)[0]; prev = list[list.length - 1];
+    }
+    if (!prev) { var y = day(new Date(today.getTime() - 86400000)); prev = y[y.length - 1]; }
+    var left = Math.floor(next.time / 60000) - Math.floor(now / 60000), h = Math.floor(left / 60), m = left % 60;
+    $('hijri').textContent = hijriText(now);
+    $('clock').textContent = clock(now);
+    $('label').textContent = T.next;
+    $('name').textContent = label(next.id, next.time);
+    $('count').textContent = left <= 0 ? T.now : T.inp + ' ' + (h ? h + ' ' + T.hr + ' ' : '') + m + ' ' + T.min;
+    $('at').textContent = T.at + ' ' + clock(next.time);
+    $('stage').classList.toggle('soon', left <= 15);
+    // The ring fills from the last prayer to the next one.
+    var share = Math.max(0, Math.min(1, (now - prev.time) / (next.time - prev.time)));
+    $('arc').setAttribute('stroke-dashoffset', String(1910 * (1 - share)));
+    var angle = share * 2 * Math.PI - Math.PI / 2;
+    $('dot').setAttribute('cx', String(320 + 304 * Math.cos(angle)));
+    $('dot').setAttribute('cy', String(320 + 304 * Math.sin(angle)));
+    $('list').innerHTML = list.map(function (p) {
+      return '<div class="' + (p.id === next.id && p.time === next.time ? 'next' : '') + '">' + label(p.id, p.time) +
+             '<b>' + clock(p.time).replace(/ (AM|PM|ص|م)$/, '') + '</b></div>';
+    }).join('');
+  }
+
+  // Temperatures from NZXT CAM (Kraken web integration). Shown as "–" until CAM sends them.
+  var temps = {cpu: null, gpu: null, liquid: null};
+  function showTemps() {
+    if (!cfg.temps) { $('temps').style.display = 'none'; return; }
+    $('temps').innerHTML = ['cpu', 'gpu', 'liquid'].map(function (k) {
+      return '<div>' + T[k] + '<b>' + (temps[k] == null ? '–' : Math.round(temps[k]) + '°') + '</b></div>';
+    }).join('');
+  }
+  window.nzxt = {v1: {onMonitoringDataUpdate: function (data) {
+    try {
+      temps.cpu = data.cpus && data.cpus[0] && data.cpus[0].temperature;
+      temps.gpu = data.gpus && data.gpus[0] && data.gpus[0].temperature;
+      temps.liquid = data.kraken && data.kraken.liquidTemperature;
+      showTemps();
+    } catch (e) {}
+  }}};
+
+  draw(); showTemps();
+  setInterval(draw, 1000 * 15);
+})();
+</script>
+</body>
+</html>
